@@ -4,8 +4,8 @@ if [ -z "$NAMESPACES" ]; then
     NAMESPACES=$(kubectl get ns -o jsonpath={.items[*].metadata.name})
 fi
 
-RESOURCETYPES="${RESOURCETYPES:-"ingress deployment configmap svc rc ds crd networkpolicy statefulset storageclass cronjob"}"
-GLOBALRESOURCES="${GLOBALRESOURCES:-"namespace storageclasses"}"
+RESOURCETYPES="${RESOURCETYPES:-"ingress deployment configmap svc rc ds networkpolicy statefulset storageclass cronjob"}"
+GLOBALRESOURCES="${GLOBALRESOURCES:-"namespace storageclasses crd clusterrole clusterrolebinding"}"
 
 # Initialize git repo
 [ -z "$DRY_RUN" ] && [ -z "$GIT_REPO" ] && echo "Need to define GIT_REPO environment variable" && exit 1
@@ -25,7 +25,7 @@ fi
 [ -z "$DRY_RUN" ] && git config --global user.name "$GIT_USERNAME"
 [ -z "$DRY_RUN" ] && git config --global user.email "$GIT_EMAIL"
 
-[ -z "$DRY_RUN" ] && (test -d "$GIT_REPO_PATH" || git clone --depth 1 "$GIT_REPO" "$GIT_REPO_PATH" --branch "$GIT_BRANCH" || git clone "$GIT_REPO" "$GIT_REPO_PATH")
+[ -z "$DRY_RUN" ] && [ ! -d "$GIT_REPO_PATH" ] && (git clone --depth 1 "$GIT_REPO" "$GIT_REPO_PATH" --branch "$GIT_BRANCH" || git clone "$GIT_REPO" "$GIT_REPO_PATH")
 cd "$GIT_REPO_PATH"
 [ -z "$DRY_RUN" ] && (git checkout "${GIT_BRANCH}" || git checkout -b "${GIT_BRANCH}")
 
@@ -72,7 +72,7 @@ for namespace in $NAMESPACES; do
             label_selector="-l OWNER!=TILLER"
         fi
 
-        kubectl --namespace="${namespace}" get "$type" $label_selector -o custom-columns=SPACE:.metadata.namespace,KIND:..kind,NAME:.metadata.name --no-headers | while read -r a b name; do
+        kubectl --namespace="${namespace}" get "$type" $label_selector -o custom-columns=NAME:.metadata.name --no-headers | while read -r name; do
             [ -z $name ] && continue
 
         # Service account tokens cannot be exported
@@ -80,7 +80,14 @@ for namespace in $NAMESPACES; do
             continue
         fi
 
-        kubectl --namespace="${namespace}" get --export -o=json "$type" "$name" | jq --sort-keys \
+        if [[ "$type" == 'role' || "$type" == 'rolebinding' ]]; then
+            # server-side export only works for resources that define an export strategy; doesn't work for role/rolebinding 
+            export_opt=""
+        else
+            export_opt="--export"
+        fi
+
+        kubectl --namespace="${namespace}" get $export_opt -o=json "$type" "$name" | jq --sort-keys \
         'del(
             .metadata.annotations."control-plane.alpha.kubernetes.io/leader",
             .metadata.annotations."kubectl.kubernetes.io/last-applied-configuration",
@@ -101,7 +108,7 @@ done
 git add .
 
 if ! git diff-index --quiet HEAD --; then
-    git commit -m "Automatic backup at $(date)"
+    git commit -m "Automatic backup from ${GIT_PREFIX_PATH}"
     git push origin "${GIT_BRANCH}"
 else
     echo "No change"

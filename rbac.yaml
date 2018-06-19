@@ -17,7 +17,15 @@ rules:
     "secrets",
     "statefulsets",
     "storageclasses",
-    "customresourcedefinitions"
+    "persistentvolumeclaims",
+    "serviceaccounts",
+    "horizontalpodautoscalers",
+    "rolebindings",
+    "roles",
+    "clusterroles",
+    "clusterrolebindings",
+    "customresourcedefinitions",
+    "destinationpolicies"
   ]
   verbs: ["get", "list"]
 

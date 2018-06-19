@@ -27,7 +27,7 @@ spec:
           name: kube-backup
         spec:
           containers:
-          - image: ptlange/kube-backup:1.5.4
+          - image: REDACTED
             imagePullPolicy: Always
             name: backup
             resources: {}
@@ -35,7 +35,7 @@ spec:
             - name: GIT_REPO
               value: "git@git.example.com:infra/kube-backup.git"
             - name: RESOURCETYPES
-              value: "ingress deployment configmap svc rc ds thirdpartyresource networkpolicy statefulset storageclass cronjob"
+              value: "ingress deployment configmap svc rc ds networkpolicy statefulset storageclass cronjob serviceaccount pvc hpa role rolebinding destinationpolicy"
             volumeMounts:
             - mountPath: /backup/
               name: cache
