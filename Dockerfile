@@ -25,7 +25,7 @@ RUN apk update && \
   apk del libressl-dev make g++ && \
   rm -rf /var/cache/apk/*
 
-RUN pip install ijson awscli
+RUN pip install ijson azure-cli
 RUN adduser -h /backup -D backup
 
 ENV KUBECTL_VERSION 1.9.3
